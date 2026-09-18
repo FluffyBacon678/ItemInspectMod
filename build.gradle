@@ -1,0 +1,53 @@
+plugins {
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+repositories {
+	// Add repositories to retrieve artifacts from in here.
+	// Loom already adds the Fabric and Mojang maven repos needed for Minecraft itself.
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Fabric API
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// MixinExtras: lets our mouse-redirect mixin use @WrapOperation instead of a
+	// plain @Redirect, so it composes with other mods hooking the same call
+	// (e.g. Do a Barrel Roll) instead of crashing on a redirector conflict.
+	// Not `include`d: Fabric Loader 0.15.0+ already bundles MixinExtras at
+	// runtime (target install is on 0.19.3), this is compile-time API access only.
+	modImplementation "io.github.llamalad7:mixinextras-fabric:0.5.5"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName" }
+	}
+}

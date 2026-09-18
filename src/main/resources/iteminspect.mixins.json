@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "dev.arielg.iteminspect.mixin",
+	"plugin": "dev.arielg.iteminspect.mixin.ItemInspectMixinPlugin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"MouseHandlerMixin",
+		"ItemInHandRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

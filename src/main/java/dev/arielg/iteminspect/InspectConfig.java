@@ -1,0 +1,60 @@
+package dev.arielg.iteminspect;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import net.fabricmc.loader.api.FabricLoader;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/**
+ * Every value here was a placeholder guess written without being able to see
+ * the game run. Edit this file (in the Minecraft config folder) and rejoin/
+ * reload to tune the feel without needing a rebuild.
+ */
+public class InspectConfig {
+	public float maxYawDegrees = 60.0F;
+	public float maxPitchDegrees = 45.0F;
+	public float tiltSensitivity = 1.0F;
+	// Exponential ease-per-tick toward the inspect pose; higher = snappier.
+	public float easePerTick = 0.35F;
+	// Local-space translate applied at full centerOffset, before mirroring for the off hand.
+	public float translateX = 0.30F;
+	public float translateY = 0.15F;
+	public float translateZ = 0.30F;
+
+	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+	private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve(ItemInspectClient.MOD_ID + ".json");
+
+	public static InspectConfig load() {
+		if (Files.exists(PATH)) {
+			try (Reader reader = Files.newBufferedReader(PATH, StandardCharsets.UTF_8)) {
+				InspectConfig loaded = GSON.fromJson(reader, InspectConfig.class);
+				if (loaded != null) {
+					return loaded;
+				}
+			} catch (IOException | RuntimeException e) {
+				ItemInspectClient.LOGGER.warn("Failed to read {}, using defaults", PATH, e);
+			}
+		}
+
+		InspectConfig defaults = new InspectConfig();
+		defaults.save();
+		return defaults;
+	}
+
+	public void save() {
+		try {
+			Files.createDirectories(PATH.getParent());
+			try (Writer writer = Files.newBufferedWriter(PATH, StandardCharsets.UTF_8)) {
+				GSON.toJson(this, writer);
+			}
+		} catch (IOException e) {
+			ItemInspectClient.LOGGER.warn("Failed to write {}", PATH, e);
+		}
+	}
+}
