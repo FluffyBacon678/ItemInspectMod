@@ -28,3 +28,7 @@ run/
 
 # tooling
 .claude/
+
+# stray native-library extraction dirs if TEMP ever points at the repo root
+/jna-*/
+/lwjgl_*/
