@@ -24,10 +24,6 @@ public class ItemInHandRendererMixin {
 	@Unique
 	private PoseStack.Pose iteminspect$handPose;
 
-	// TEMPORARY diagnostic counter, retained until the modpack playtest passes.
-	@Unique
-	private int iteminspect$frameCounter;
-
 	// Punchy draws its hands from a HEAD injection here and cancels vanilla's
 	// renderArmWithItem, so applyItemArmTransform is never reached. Wrap the
 	// whole pass, including other mods' injections, to identify first-person
@@ -72,10 +68,6 @@ public class ItemInHandRendererMixin {
 		try {
 			InspectTransform.apply(poseStack, iteminspect$handPose, player.getMainArm(),
 					ItemInspectClient.CONFIG, offset, ItemInspectClient.getInspectYaw(), ItemInspectClient.getInspectPitch());
-			if (iteminspect$frameCounter++ % 30 == 0) {
-				ItemInspectClient.LOGGER.info("[inspect-debug] item submit, centerOffset={}, displayContext={}, mainArm={}",
-						offset, displayContext, player.getMainArm());
-			}
 			original.call(state, poseStack, collector, light, overlay, seed);
 		} finally {
 			poseStack.popPose();

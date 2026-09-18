@@ -1,5 +1,20 @@
 # Handoff: Item Inspect Fabric mod — review + smoke test
 
+## Polish pass (2026-09-18, version 0.1.2)
+
+Removed the temporary debug instrumentation flagged below
+(`iteminspect$frameCounter`/`LOGGER.info` in `ItemInHandRendererMixin`, the
+per-tick actionbar message in `ItemInspectClient`) now that the automated
+gametest suite covers verification instead. Re-ran both
+`runClientGameTest` variants (vanilla and with the real Punchy jar) after
+removing it — still `BUILD SUCCESSFUL`, zero `AssertionError`s. Installed
+`iteminspect-0.1.2.jar` into the real mods folder, replacing `0.1.1`.
+
+Still true from the section below: needs a real human playtest in the full
+modpack (only `iteminspect` + `punchy` were loaded together in the
+automated test), and filled maps / Punchy's custom model-boat-chest
+rendering aren't covered.
+
 ## Verified fixed (2026-09-18, version 0.1.1)
 
 Codex diagnosed the Punchy bypass below and built the fix + an automated
@@ -39,10 +54,8 @@ there and finished verification:
   Punchy attaches to that same submission is), and filled maps / Punchy's
   custom model-boat-chest rendering paths bypass `renderItem` entirely and
   aren't covered — don't claim those work.
-- The `iteminspect$frameCounter`/`LOGGER.info`/actionbar debug output
-  (`ItemInHandRendererMixin`, `ItemInspectClient`) is still present and
-  marked `TEMPORARY` in comments — harmless but should be removed (or put
-  behind a dev-only flag) before treating this as release-quality.
+- The `iteminspect$frameCounter`/`LOGGER.info`/actionbar debug output that
+  was here has since been removed — see "Polish pass (0.1.2)" above.
 
 ## Follow-up: Punchy bypass found (2026-09-18, version 0.1.1)
 

@@ -7,7 +7,6 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import org.slf4j.Logger;
@@ -61,17 +60,6 @@ public class ItemInspectClient implements ClientModInitializer {
 			centerOffset += (target - centerOffset) * CONFIG.easePerTick;
 			if (Math.abs(target - centerOffset) < 0.001F) {
 				centerOffset = target;
-			}
-
-			// TEMPORARY debug readout - remove once the render transform is confirmed working.
-			if (active && client.player != null) {
-				client.player.displayClientMessage(
-						Component.literal(String.format(
-								"[inspect] offset=%.2f yaw=%.1f pitch=%.1f mainArm=%s",
-								centerOffset, inspectYaw, inspectPitch, client.player.getMainArm()
-						)),
-						true
-				);
 			}
 		});
 	}
