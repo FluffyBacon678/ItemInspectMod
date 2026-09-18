@@ -1,5 +1,13 @@
 # Inspect Mod — Plan (Fabric, MC 1.21.11)
 
+> Historical research notes: see the follow-up at the top of HANDOFF.md.
+> Punchy bypassed the original vanilla transform hook; version 0.1.1 moves
+> the transform to item submission and is now verified working via an
+> automated client gametest (`src/gametest`), in both vanilla and
+> Punchy-loaded conditions — see "Verified fixed" at the top of HANDOFF.md.
+> Config edits require restarting the client, and maps/custom render paths
+> are not yet covered. Still needs a real human playtest in the full modpack.
+
 ## Concept
 
 Hold a key → held item eases toward screen-center, world camera locks, and mouse

@@ -13,8 +13,8 @@ import java.nio.file.Path;
 
 /**
  * Every value here was a placeholder guess written without being able to see
- * the game run. Edit this file (in the Minecraft config folder) and rejoin/
- * reload to tune the feel without needing a rebuild.
+ * the game run. Edit config/iteminspect.json and restart Minecraft to tune
+ * the feel without needing a rebuild. The config is loaded once at startup.
  */
 public class InspectConfig {
 	public float maxYawDegrees = 60.0F;
@@ -22,7 +22,7 @@ public class InspectConfig {
 	public float tiltSensitivity = 1.0F;
 	// Exponential ease-per-tick toward the inspect pose; higher = snappier.
 	public float easePerTick = 0.35F;
-	// Local-space translate applied at full centerOffset, before mirroring for the off hand.
+	// Hand-view translate at full centerOffset; X mirrors for a left-handed player.
 	public float translateX = 0.30F;
 	public float translateY = 0.15F;
 	public float translateZ = 0.30F;

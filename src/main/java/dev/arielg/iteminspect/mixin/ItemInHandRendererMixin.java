@@ -1,59 +1,84 @@
 package dev.arielg.iteminspect.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
-import dev.arielg.iteminspect.InspectConfig;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import dev.arielg.iteminspect.InspectTransform;
 import dev.arielg.iteminspect.ItemInspectClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ItemInHandRenderer.class)
 public class ItemInHandRendererMixin {
-	// TEMPORARY debug counter - remove once the render transform is confirmed working.
-	private static int iteminspect$frameCounter = 0;
-	// applyItemArmTransform() is the one place vanilla positions the held item
-	// for its normal resting/idle pose (attack swings and special use-animations
-	// like eating/blocking/drawing a bow apply their own transforms instead, and
-	// those are exactly the cases ItemInspectClient already forces inspect off
-	// for) - injecting at its tail lets us add our translate/tilt on top of the
-	// vanilla pose instead of re-deriving it.
-	@Inject(
-			method = "applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V",
-			at = @At("TAIL")
-	)
-	private void iteminspect$applyInspectTransform(PoseStack poseStack, HumanoidArm humanoidArm, float f, CallbackInfo ci) {
-		float centerOffset = ItemInspectClient.getCenterOffset();
-		if (centerOffset <= 0.0F) {
-			return;
-		}
+	@Unique
+	private PoseStack.Pose iteminspect$handPose;
 
+	// TEMPORARY diagnostic counter, retained until the modpack playtest passes.
+	@Unique
+	private int iteminspect$frameCounter;
+
+	// Punchy draws its hands from a HEAD injection here and cancels vanilla's
+	// renderArmWithItem, so applyItemArmTransform is never reached. Wrap the
+	// whole pass, including other mods' injections, to identify first-person
+	// draws even when Punchy uses THIRD_PERSON_* item model transforms.
+	@WrapMethod(method = "renderHandsWithItems")
+	private void iteminspect$withHandRenderContext(float partialTick, PoseStack poseStack,
+			SubmitNodeCollector collector, LocalPlayer player, int light, Operation<Void> original) {
+		PoseStack.Pose previous = iteminspect$handPose;
+		iteminspect$handPose = poseStack.last().copy();
+		try {
+			original.call(partialTick, poseStack, collector, player, light);
+		} finally {
+			iteminspect$handPose = previous;
+		}
+	}
+
+	// Vanilla and Punchy's ordinary held items both submit here. Scope the
+	// change to the submission so it cannot leak into the off-hand, arm mesh,
+	// or later draws sharing this stack. Keep the mouse WrapOperation intact.
+	@WrapOperation(
+			method = "renderItem",
+			at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/item/ItemStackRenderState;submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;III)V")
+	)
+	private void iteminspect$submitInspectedItem(ItemStackRenderState state, PoseStack poseStack,
+			SubmitNodeCollector collector, int light, int overlay, int seed, Operation<Void> original,
+			LivingEntity entity, ItemStack item, ItemDisplayContext displayContext,
+			PoseStack renderPose, SubmitNodeCollector renderCollector, int renderLight) {
 		Minecraft client = Minecraft.getInstance();
 		LocalPlayer player = client.player;
-		boolean mainHandMatch = player != null && humanoidArm == player.getMainArm();
-		if (iteminspect$frameCounter++ % 30 == 0) {
-			ItemInspectClient.LOGGER.info(
-					"[inspect-debug] applyItemArmTransform tail hit, centerOffset={}, humanoidArm={}, mainArm={}, mainHandMatch={}",
-					centerOffset, humanoidArm, player == null ? "null" : player.getMainArm(), mainHandMatch
-			);
-		}
-		// Main hand only for v1; the off-hand item keeps rendering normally.
-		if (!mainHandMatch) {
+		float offset = ItemInspectClient.getCenterOffset();
+		boolean handContext = displayContext.firstPerson()
+				|| displayContext == ItemDisplayContext.THIRD_PERSON_LEFT_HAND
+				|| displayContext == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND;
+		if (iteminspect$handPose == null || offset <= 0.0F || player == null || entity != player
+				|| !client.options.getCameraType().isFirstPerson() || !handContext
+				|| displayContext.leftHand() != (player.getMainArm() == HumanoidArm.LEFT)) {
+			original.call(state, poseStack, collector, light, overlay, seed);
 			return;
 		}
 
-		// Offsets come from InspectConfig (config/iteminspect.json) - not visually
-		// tuned yet, this environment can't launch the actual game to eyeball it.
-		// Edit that file and rejoin to adjust by feel without a rebuild.
-		InspectConfig config = ItemInspectClient.CONFIG;
-		int side = humanoidArm == HumanoidArm.RIGHT ? 1 : -1;
-		poseStack.translate(-side * config.translateX * centerOffset, config.translateY * centerOffset, config.translateZ * centerOffset);
-		poseStack.mulPose(Axis.YP.rotationDegrees(ItemInspectClient.getInspectYaw() * centerOffset));
-		poseStack.mulPose(Axis.XP.rotationDegrees(-ItemInspectClient.getInspectPitch() * centerOffset));
+		poseStack.pushPose();
+		try {
+			InspectTransform.apply(poseStack, iteminspect$handPose, player.getMainArm(),
+					ItemInspectClient.CONFIG, offset, ItemInspectClient.getInspectYaw(), ItemInspectClient.getInspectPitch());
+			if (iteminspect$frameCounter++ % 30 == 0) {
+				ItemInspectClient.LOGGER.info("[inspect-debug] item submit, centerOffset={}, displayContext={}, mainArm={}",
+						offset, displayContext, player.getMainArm());
+			}
+			original.call(state, poseStack, collector, light, overlay, seed);
+		} finally {
+			poseStack.popPose();
+		}
 	}
 }

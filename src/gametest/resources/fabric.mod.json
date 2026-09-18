@@ -1,0 +1,11 @@
+{
+	"schemaVersion": 1,
+	"id": "iteminspect-test",
+	"version": "1.0.0",
+	"name": "Item Inspect smoke tests",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": ["dev.arielg.iteminspect.InspectSmokeTest"]
+	},
+	"mixins": ["iteminspect-test.mixins.json"]
+}

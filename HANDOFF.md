@@ -1,5 +1,100 @@
 # Handoff: Item Inspect Fabric mod — review + smoke test
 
+## Verified fixed (2026-09-18, version 0.1.1)
+
+Codex diagnosed the Punchy bypass below and built the fix + an automated
+`src/gametest` smoke test, then ran out of tokens mid-verification (the
+off-hand check under Punchy was still ambiguous). Claude continued from
+there and finished verification:
+
+- `./gradlew runClientGameTest` (vanilla, no compat mod): **BUILD SUCCESSFUL,
+  zero `AssertionError`s.** Log shows `centerOffset` correctly hitting `1.0`
+  while F7 held and decaying smoothly to ~0 within ~20 ticks of release.
+  Screenshots (`build/run/clientGameTest/screenshots/`) confirm the sword
+  visibly tilts.
+- `./gradlew runClientGameTest '-PcompatMod=<path-to-punchy jar>'`: **also
+  BUILD SUCCESSFUL, zero `AssertionError`s** — including the off-hand-stays-
+  untouched assertion that was unresolved when Codex ran out of tokens. Log
+  confirms Punchy's `THIRD_PERSON_*`-transform-during-first-person quirk was
+  actually hit and correctly handled (not just theoretically covered).
+  Screenshots show Punchy's own arm+sword mesh visibly shifting and rotating
+  together between idle/tilted/released — since Punchy renders a real arm
+  and our hook is at the shared `ItemStackRenderState.submit` point, the
+  arm moves with the item for free here, which happens to be close to what
+  the user actually wants (see "Known follow-up ask" below) — worth telling
+  them this may already look right with Punchy in the mix, no extra work
+  needed for that specific case.
+- Live-installed `iteminspect-0.1.1.jar` into the real
+  `%APPDATA%\.minecraft\mods\` (replacing `0.1.0`), and reset the live
+  `config/iteminspect.json` back to normal defaults (`translateX/Y/Z` =
+  `0.30/0.15/0.30`) — it had been pushed to exaggerated diagnostic values
+  (`1.2/0.8/1.2`) for an earlier "is anything happening at all" test that's
+  no longer needed now that automated verification exists.
+- **Still outstanding, not yet done:** a real human playtest in the full
+  ~120-mod modpack (the gametest above only loads `iteminspect` + `punchy`
+  in isolation) and feel/offset tuning. Minecraft was still running an old
+  session at the time of this fix — **needs a full restart** to pick up
+  `0.1.1` (mods don't hot-reload). Also still true: Punchy's *own* arm mesh
+  orientation itself isn't independently tilted (only the item + whatever
+  Punchy attaches to that same submission is), and filled maps / Punchy's
+  custom model-boat-chest rendering paths bypass `renderItem` entirely and
+  aren't covered — don't claim those work.
+- The `iteminspect$frameCounter`/`LOGGER.info`/actionbar debug output
+  (`ItemInHandRendererMixin`, `ItemInspectClient`) is still present and
+  marked `TEMPORARY` in comments — harmless but should be removed (or put
+  behind a dev-only flag) before treating this as release-quality.
+
+## Follow-up: Punchy bypass found (2026-09-18, version 0.1.1)
+
+**The original handoff below is historical. Its render-path diagnosis and
+claim that this modpack has no visible held-tool arm were incomplete.**
+
+The installed `punchy-2.5.5-fabric-1.21.11.jar` contains a HEAD injection in
+`renderHandsWithItems` that calls `PunchyArmRenderer.renderFirstPerson`.
+Its `punchy$cancelVanillaArms` injection then cancels `renderArmWithItem`
+for non-blacklisted hands when Punchy is enabled. The installed Punchy
+configuration has `enableMod: true` and an empty item blacklist. Therefore
+our old `applyItemArmTransform` hook is bypassed, even though it binds
+successfully. Confirmed directly from the installed jar's bytecode.
+
+The fix wraps the whole `renderHandsWithItems` pass to capture its view
+coordinate system, and wraps `ItemStackRenderState.submit` inside
+`ItemInHandRenderer.renderItem`. Both vanilla and Punchy's ordinary items
+reach this submission. Punchy uses `THIRD_PERSON_*` model transforms even
+inside first-person rendering, so those contexts are accepted only within
+the scoped hand pass, for the local player's main arm. The transform uses
+view axes and the item's origin as its tilt pivot. A push/pop in `finally`
+keeps it from changing later submissions or the off-hand. The composable
+mouse hook is unchanged. MixinExtras >=0.5.0 is now explicitly required
+(the real instance bundles 0.5.4).
+
+Config still loads only at startup: **restart Minecraft after editing it**.
+The real instance's exaggerated diagnostic offsets remain untouched; use
+`translateX: 0.30`, `translateY: 0.15`, `translateZ: 0.30` for normal testing.
+
+The `src/gametest` test mod is separate from the shipped jar. Run:
+
+```powershell
+$env:TEMP = (Get-Location).Path
+$env:TMP = $env:TEMP
+.\gradlew.bat build
+.\gradlew.bat runClientGameTest
+.\gradlew.bat runClientGameTest '-PcompatMod=C:\path\to\punchy.jar'
+```
+
+Tests create an isolated world under `build/run/clientGameTest`, exercise
+F7 and mouse input, observe the actual submitted item matrices, check that
+the main hand changes and the off-hand does not, check release/camera
+recovery, and save screenshots. They also check mirrored translation and
+rotation around the item origin with an already rotated/scaled pose.
+
+Remaining scope: Punchy's arm mesh is not tilted with the item. Filled maps
+and Punchy's custom model/boat/chest rendering can bypass `renderItem` and
+still need separate support. Do not claim all item types work. The full
+user modpack and visual tuning still need a human playtest.
+
+## Original handoff
+
 Written for a fresh agent (ChatGPT/Codex) picking this up cold. Read this
 first, then [PLAN.md](PLAN.md) for the full research/decision history if you
 want more depth on any point below.

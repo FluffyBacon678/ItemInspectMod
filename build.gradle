@@ -21,6 +21,17 @@ dependencies {
 	// Not `include`d: Fabric Loader 0.15.0+ already bundles MixinExtras at
 	// runtime (target install is on 0.19.3), this is compile-time API access only.
 	modImplementation "io.github.llamalad7:mixinextras-fabric:0.5.5"
+	// Optional local compatibility mod for smoke tests; never bundled in our jar.
+	if (providers.gradleProperty('compatMod').isPresent()) {
+		modLocalRuntime files(providers.gradleProperty('compatMod').get())
+	}
+}
+
+fabricApi.configureTests {
+	createSourceSet = true
+	modId = 'iteminspect-test'
+	enableGameTests = false
+	enableClientGameTests = true
 }
 
 processResources {
