@@ -25,7 +25,9 @@ public class InspectConfig {
 	// Hand-view translate at full centerOffset; X mirrors for a left-handed player.
 	public float translateX = 0.30F;
 	public float translateY = 0.15F;
-	public float translateZ = 0.30F;
+	// Kept at 0 by default: pushing the item toward the camera reads as it
+	// popping out of the hand's grip rather than tilting in place.
+	public float translateZ = 0.0F;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve(ItemInspectClient.MOD_ID + ".json");
