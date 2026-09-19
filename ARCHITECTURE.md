@@ -123,7 +123,7 @@ Run it plain, or against a specific compatibility target:
 ./gradlew runClientGameTest '-PcompatMod=/path/to/punchy.jar'
 ```
 
-Both variants pass clean as of `0.1.3` (zero `AssertionError`s), including
+Both variants pass clean as of `1.0.0` (zero `AssertionError`s), including
 against the real Punchy jar — confirmed Punchy's `THIRD_PERSON_*`-during-
 first-person quirk and the off-hand isolation both hold up in practice, not
 just in the code's intent.
