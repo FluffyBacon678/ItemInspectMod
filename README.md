@@ -65,20 +65,30 @@ compatibility (see "Known compatibility notes" below):
 ./gradlew runClientGameTest '-PcompatMod=/path/to/some-mod.jar'
 ```
 
-## Known compatibility notes
+## Optional integration: Punchy
 
-Some mods hook the exact same rendering/input points this mod does:
+Vanilla renders no arm/hand behind a held item at all — inspecting just
+tilts the floating item mesh in place. If [Punchy](https://modrinth.com/mod/punchy)
+is installed too (listed as an optional `suggests` dependency — nothing
+breaks if it's absent), its arm moves together with the item for the item
+kinds it gives special animation to (swords, tools, bows, etc.), which
+looks noticeably better. This is a tested, intentional integration, not
+just incidental compatibility — see ARCHITECTURE.md for how the hook works.
 
-- **Do a Barrel Roll** redirects the same mouse-turn call — handled via
-  MixinExtras' composable `@WrapOperation` instead of an exclusive
-  `@Redirect`, so both mods can hook it without conflicting.
-- **Punchy** replaces first-person hand rendering and cancels the vanilla
-  method this mod originally hooked — handled by moving the transform to
-  the item's actual render-submission call, which both vanilla and Punchy's
-  ordinary items funnel through.
+For item kinds Punchy doesn't specially animate (plain blocks, for
+example), it falls back to a render path this mod's hook doesn't reach, so
+the item tilts without a moving hand — the same as plain vanilla for that
+case. Confirmed via Punchy's own bytecode, not a guess; not planned to be
+special-cased further right now.
+
+Separately, **Do a Barrel Roll** redirects the same mouse-turn call this
+mod does — handled via MixinExtras' composable `@WrapOperation` instead of
+an exclusive `@Redirect`, so both mods hook it without conflicting.
 
 ## Known limitations
 
+- No moving hand/arm at all in plain vanilla, or for item kinds Punchy
+  doesn't specially animate — see "Optional integration: Punchy" above.
 - Filled maps and Punchy's custom model/boat/chest rendering bypass the
   item-submission hook this mod uses and aren't covered yet.
 - No roll axis (pitch/yaw only).
