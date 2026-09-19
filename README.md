@@ -10,6 +10,9 @@ control returns immediately.
 - The camera locks while inspecting — mouse movement tilts the item's
   pitch/yaw instead of turning the view.
 - No GUI/screen opens.
+- A skin-textured hand moves along with plain block items while inspecting
+  (vanilla itself never draws one there — see "Optional integration: Punchy"
+  below for how other item types are handled).
 
 ## Install
 
@@ -75,11 +78,13 @@ kinds it gives special animation to (swords, tools, bows, etc.), which
 looks noticeably better. This is a tested, intentional integration, not
 just incidental compatibility — see ARCHITECTURE.md for how the hook works.
 
-For item kinds Punchy doesn't specially animate (plain blocks, for
-example), it falls back to a render path this mod's hook doesn't reach, so
-the item tilts without a moving hand — the same as plain vanilla for that
-case. Confirmed via Punchy's own bytecode, not a guess; not planned to be
-special-cased further right now.
+For item kinds Punchy doesn't specially animate, it falls back to a render
+path this mod's hook doesn't reach — confirmed via Punchy's own bytecode,
+not a guess. **Plain blocks are the one such case this mod handles itself**:
+it draws its own hand for held `BlockItem`s (using vanilla's own arm-drawing
+code, not Punchy's), so those get a moving hand too, with or without Punchy
+installed. Other unclassified item types, if any turn up, still just tilt
+without a hand for now.
 
 Separately, **Do a Barrel Roll** redirects the same mouse-turn call this
 mod does — handled via MixinExtras' composable `@WrapOperation` instead of
@@ -87,8 +92,9 @@ an exclusive `@Redirect`, so both mods hook it without conflicting.
 
 ## Known limitations
 
-- No moving hand/arm at all in plain vanilla, or for item kinds Punchy
-  doesn't specially animate — see "Optional integration: Punchy" above.
+- No moving hand for item types that are neither a plain block nor
+  something Punchy specially animates — see "Optional integration: Punchy"
+  above.
 - Filled maps and Punchy's custom model/boat/chest rendering bypass the
   item-submission hook this mod uses and aren't covered yet.
 - No roll axis (pitch/yaw only).

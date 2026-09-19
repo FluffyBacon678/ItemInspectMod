@@ -24,7 +24,8 @@ basics, read the README first.
   [`InspectTransform.java`](src/main/java/dev/arielg/iteminspect/InspectTransform.java) —
   the render-side hook. See "Why the item-submission hook" below for why
   this targets `ItemStackRenderState.submit` rather than the more obvious
-  `applyItemArmTransform`.
+  `applyItemArmTransform`. Also draws a synthetic hand for `BlockItem`s
+  while inspecting — see "Synthetic hand for block items" below.
 - [`InspectConfig.java`](src/main/java/dev/arielg/iteminspect/InspectConfig.java) —
   Gson-backed `config/iteminspect.json`.
 - [`ItemInspectMixinPlugin.java`](src/main/java/dev/arielg/iteminspect/mixin/ItemInspectMixinPlugin.java) —
@@ -96,6 +97,53 @@ Punchy's *ordinary* item rendering both funnel through:
   items (item frames, other players, etc.), or into later draws sharing the
   same `PoseStack`.
 
+## Synthetic hand for block items
+
+Punchy attaches a moving arm for item kinds it gives custom animation to
+(swords, tools, bows...), so those already looked right once the fix above
+landed. Plain blocks are the confirmed gap: Punchy's own classification
+falls back to a path that doesn't reach our hook, and vanilla never draws
+an arm behind a held item at all — so a held block would just tilt with
+nothing attached to it, reading as the item flying away from a static hand.
+
+The fix, in `ItemInHandRendererMixin`, is gated to `item.getItem() instanceof
+BlockItem` (our own classification — it doesn't read or depend on Punchy's
+internals) and, while inspecting, calls `ItemInHandRenderer`'s own **private**
+`renderPlayerArm` method directly via a Mixin `@Shadow`:
+
+```java
+@Shadow
+private void renderPlayerArm(PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int i, float f, float g, HumanoidArm humanoidArm) {
+	throw new AssertionError(); // never executes - Mixin redirects calls to the real method
+}
+```
+
+This was a deliberate choice over hand-rolling the arm's position/rotation
+math ourselves by calling `AvatarRenderer.renderRightHand`/`renderLeftHand`
+directly: an early attempt at that produced a giant, wrongly-proportioned
+shape instead of a hand, because those methods have non-obvious preconditions
+from their normal calling context that aren't documented and weren't worth
+reverse-engineering further. Shadowing `renderPlayerArm` and calling it
+directly sidesteps all of that — it's vanilla's own tested code, doing
+exactly what it does for the empty-hand case, just invoked with our
+yaw/pitch tilt pre-applied to the pose it starts from:
+
+```java
+poseStack.last().set(iteminspect$handPose);
+poseStack.mulPose(Axis.YP.rotationDegrees(yaw * offset));
+poseStack.mulPose(Axis.XP.rotationDegrees(-pitch * offset));
+this.renderPlayerArm(poseStack, collector, light, 0.0F, 0.0F, player.getMainArm());
+```
+
+**Important caveat on verifying this visually:** the automated gametest's
+synthetic player cannot be used to eyeball whether the arm looks right. An
+`empty-hand-baseline` screenshot (main hand truly empty, zero mod code
+active) shows the *exact same* oversized, wrongly-shaped rendering in that
+headless environment — meaning this is a pre-existing quirk of how the
+gametest's player/skin renders there, not something our code causes. Real
+visual verification of this feature needs the user's actual game, not the
+screenshot-based test.
+
 ## Verification
 
 `src/gametest` (`InspectSmokeTest`) launches an isolated client, gives the
@@ -123,10 +171,12 @@ Run it plain, or against a specific compatibility target:
 ./gradlew runClientGameTest '-PcompatMod=/path/to/punchy.jar'
 ```
 
-Both variants pass clean as of `1.0.0` (zero `AssertionError`s), including
+Both variants pass clean as of `1.1.0` (zero `AssertionError`s), including
 against the real Punchy jar — confirmed Punchy's `THIRD_PERSON_*`-during-
 first-person quirk and the off-hand isolation both hold up in practice, not
-just in the code's intent.
+just in the code's intent. These assertions cover the item transform only;
+they do not (and cannot, in this environment — see "Synthetic hand for
+block items" above) verify the block hand-renderer's visual appearance.
 
 ## Known limitations (real, not being tracked as bugs)
 
@@ -135,15 +185,14 @@ just in the code's intent.
   looks fine because Punchy renders its arm+item as one submission, so it
   moves together, but the arm's *own* rotation isn't something this mod
   controls separately.
+- **The synthetic hand only covers `BlockItem`s.** Non-block items that
+  Punchy also doesn't specially animate (if any) still tilt without an
+  attached hand. Not extended further than blocks yet since that was the
+  confirmed, reported gap.
 - **Filled maps and Punchy's custom model/boat/chest rendering** bypass
   `ItemStackRenderState.submit` entirely (they use their own draw calls) and
   aren't covered.
 - **No roll axis** — pitch/yaw only.
-- **No arm/hand mesh in plain vanilla** (no Punchy, no other hand-rendering
-  mod) — vanilla itself doesn't render a forearm behind a held tool, only
-  the item mesh, so there's nothing for this mod to move besides the item
-  in that case. A from-scratch skin-textured arm renderer would be a
-  materially larger feature if ever wanted — not started.
 
 ## History
 

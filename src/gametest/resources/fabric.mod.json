@@ -5,7 +5,10 @@
 	"name": "Item Inspect smoke tests",
 	"environment": "client",
 	"entrypoints": {
-		"fabric-client-gametest": ["dev.arielg.iteminspect.InspectSmokeTest"]
+		"fabric-client-gametest": [
+			"dev.arielg.iteminspect.InspectSmokeTest",
+			"dev.arielg.iteminspect.InspectHandSmokeTest"
+		]
 	},
 	"mixins": ["iteminspect-test.mixins.json"]
 }

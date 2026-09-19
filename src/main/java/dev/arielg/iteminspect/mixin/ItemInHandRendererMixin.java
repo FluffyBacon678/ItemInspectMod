@@ -1,6 +1,7 @@
 package dev.arielg.iteminspect.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -13,14 +14,27 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(ItemInHandRenderer.class)
 public class ItemInHandRendererMixin {
+	// Vanilla's own empty-hand arm renderer (mulPose/translate math, texture,
+	// sleeve visibility, AvatarRenderer plumbing all handled correctly by it
+	// already). Shadowing and calling it directly - instead of re-deriving
+	// its positioning ourselves - avoids depending on undocumented
+	// preconditions of AvatarRenderer.renderRightHand/renderLeftHand when
+	// called outside their normal full-body-render context.
+	@Shadow
+	private void renderPlayerArm(PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int i, float f, float g, HumanoidArm humanoidArm) {
+		throw new AssertionError();
+	}
+
 	@Unique
 	private PoseStack.Pose iteminspect$handPose;
 
@@ -64,10 +78,34 @@ public class ItemInHandRendererMixin {
 			return;
 		}
 
+		float yaw = ItemInspectClient.getInspectYaw();
+		float pitch = ItemInspectClient.getInspectPitch();
+
+		// Punchy already attaches a moving arm for the item kinds it gives
+		// custom animation to (swords, tools, bows...) - drawing our own on
+		// top would double up. Blocks are the confirmed gap: Punchy falls
+		// back to a path that doesn't reach here, so nothing else is going
+		// to draw a hand for them. This is our own classification, not
+		// Punchy's - it doesn't touch Punchy's code or internals at all.
+		if (item.getItem() instanceof BlockItem) {
+			poseStack.pushPose();
+			try {
+				poseStack.last().set(iteminspect$handPose);
+				// Pre-rotate the frame renderPlayerArm will position itself
+				// within, so its (vanilla-correct) resting arm pose gets
+				// carried along with our tilt instead of us re-deriving it.
+				poseStack.mulPose(Axis.YP.rotationDegrees(yaw * offset));
+				poseStack.mulPose(Axis.XP.rotationDegrees(-pitch * offset));
+				this.renderPlayerArm(poseStack, collector, light, 0.0F, 0.0F, player.getMainArm());
+			} finally {
+				poseStack.popPose();
+			}
+		}
+
 		poseStack.pushPose();
 		try {
 			InspectTransform.apply(poseStack, iteminspect$handPose, player.getMainArm(),
-					ItemInspectClient.CONFIG, offset, ItemInspectClient.getInspectYaw(), ItemInspectClient.getInspectPitch());
+					ItemInspectClient.CONFIG, offset, yaw, pitch);
 			original.call(state, poseStack, collector, light, overlay, seed);
 		} finally {
 			poseStack.popPose();
