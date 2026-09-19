@@ -4,8 +4,8 @@
 > build-out. It's out of date in places (e.g. the render hook it describes
 > was later moved after a real compatibility bug — see below). For current
 > architecture and status, read [README.md](README.md) and
-> [HANDOFF.md](HANDOFF.md) instead; this file is kept for the reasoning
-> trail, not as a live status document.
+> [ARCHITECTURE.md](ARCHITECTURE.md) instead; this file is kept for the
+> reasoning trail, not as a live status document.
 
 ## Concept
 

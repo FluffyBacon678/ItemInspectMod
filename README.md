@@ -88,8 +88,8 @@ Some mods hook the exact same rendering/input points this mod does:
 
 - [PLAN.md](PLAN.md) — design decisions and research log from the mod's
   original build-out.
-- [HANDOFF.md](HANDOFF.md) — deeper technical notes on the render pipeline,
-  the Punchy compatibility fix, and verification history.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — deeper technical notes on the render
+  pipeline, the Punchy compatibility fix, and verification history.
 
 ## License
 

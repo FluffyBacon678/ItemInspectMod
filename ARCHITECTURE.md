@@ -1,4 +1,4 @@
-# Technical notes: Item Inspect Fabric mod
+# Architecture: Item Inspect Fabric mod
 
 Deeper detail than the [README](README.md) for anyone picking up this
 codebase — how the render/input hooks work, why they're built the way they
