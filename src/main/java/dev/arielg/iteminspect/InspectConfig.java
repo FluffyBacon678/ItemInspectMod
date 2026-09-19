@@ -17,16 +17,21 @@ import java.nio.file.Path;
  * the feel without needing a rebuild. The config is loaded once at startup.
  */
 public class InspectConfig {
-	public float maxYawDegrees = 60.0F;
-	public float maxPitchDegrees = 45.0F;
+	// Kept modest by default: vanilla (and most hand-rendering mods) don't
+	// attach a moving arm to every item type - a large swing or shift reads
+	// as the item flying away from a hand that's staying put, rather than
+	// being tilted in place. Bigger items (blocks especially) make this more
+	// obvious since the same offset covers more of the screen.
+	public float maxYawDegrees = 25.0F;
+	public float maxPitchDegrees = 20.0F;
 	public float tiltSensitivity = 1.0F;
 	// Exponential ease-per-tick toward the inspect pose; higher = snappier.
 	public float easePerTick = 0.35F;
 	// Hand-view translate at full centerOffset; X mirrors for a left-handed player.
-	public float translateX = 0.30F;
-	public float translateY = 0.15F;
-	// Kept at 0 by default: pushing the item toward the camera reads as it
-	// popping out of the hand's grip rather than tilting in place.
+	public float translateX = 0.12F;
+	public float translateY = 0.06F;
+	// Kept at 0: pushing the item toward the camera reads as it popping out
+	// of the hand's grip rather than tilting in place.
 	public float translateZ = 0.0F;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
